@@ -36,7 +36,7 @@ public class UserRegistrationRequest {
         this.password = password;
     }
 
-    public void setVendor(boolean vendor) {
+    public void setIsVendor(boolean vendor) {
         isVendor = vendor;
     }
 }
