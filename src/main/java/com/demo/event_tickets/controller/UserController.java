@@ -55,7 +55,7 @@ public class UserController {
                 Session savedSession = sessionRepository.save(session);
 
                 // Set-Cookie: SESSIONID=<session_id>;
-                response.setHeader("Set-Cookie", String.format("SESSIONID=%s; HttpOnly; Max-Age=600; Path=/; SameSite=None", savedSession.getId()));
+                response.setHeader("Set-Cookie", String.format("SESSIONID=%s; HttpOnly; Max-Age=600; Path=/; SameSite=Lax; Secure", savedSession.getId()));
 
                 return ResponseEntity.ok("{\"message\":\"Login successful\"}");
             }

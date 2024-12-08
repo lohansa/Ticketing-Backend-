@@ -15,7 +15,7 @@ import java.io.IOException;
 import java.util.Optional;
 
 @Component
-@Order(1)
+@Order(2)
 public class SessionFilter extends OncePerRequestFilter {
 
     private final SessionRepository sessionRepository;
