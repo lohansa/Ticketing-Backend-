@@ -1,16 +1,12 @@
 package com.demo.event_tickets.simulation;
 
-import com.demo.event_tickets.dto.TicketPurchaseResponse;
 import com.demo.event_tickets.model.Event;
 import com.demo.event_tickets.model.Ticket;
 import com.demo.event_tickets.model.User;
 import com.demo.event_tickets.repository.EventRepository;
 import com.demo.event_tickets.repository.TicketRepository;
 import com.demo.event_tickets.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -20,8 +16,8 @@ import java.util.Optional;
 
 @Component
 public class TicketPool {
-    private static final Logger logger = LoggerFactory.getLogger(TicketPool.class);
     private final List<EventTicket> availableTickets = new ArrayList<>();
+    private final SimulationLogger simulationLogger;
 
     @Autowired
     private final EventRepository eventRepository;
@@ -36,6 +32,8 @@ public class TicketPool {
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
         this.ticketRepository = ticketRepository;
+
+        simulationLogger = SimulationLogger.getInstance();
     }
 
     public static void initialize(UserRepository userRepository, EventRepository eventRepository, TicketRepository ticketRepository) {
@@ -54,15 +52,16 @@ public class TicketPool {
             return;
         }
 
+        User vendor = vendorOptional.get();
         Event savedEvent = eventRepository.save(event);
 
         // Add to ticket pool
         availableTickets.add(new EventTicket(savedEvent.getId(), event.getTotalTickets()));
-        logger.info("Vendor {} created event {} with {} tickets at {}",
-                event.getVendorId(),
-                event.getName(),
-                event.getTotalTickets(),
-                event.getDate());
+
+        simulationLogger.log("Vendor " + vendor.getUsername() +
+                " created event " + event.getName() +
+                " with " + event.getTotalTickets() + " tickets at " + event.getDate()
+        );
     }
 
     public synchronized Optional<Event> buyTicket(String customerId) {
@@ -91,6 +90,10 @@ public class TicketPool {
         // Check if user already has a ticket for this event
         if (existingTicket.isPresent() &&
                 existingTicket.get().getEvents().contains(event.get().getId())) {
+            simulationLogger.log("Customer " + customer.getUsername() +
+                    " already has a ticket for event " + event.get().getName() +
+                    ", therefore no new tickets granted!"
+            );
             return Optional.empty(); // Already have a ticket
         }
 
@@ -117,16 +120,10 @@ public class TicketPool {
 
         ticketRepository.save(ticketList);
 
-        // Log purchase
-        System.out.println("Customer " + customer.getUsername() +
-                "purchased ticket for event " + event.get().getName() +
+        simulationLogger.log("Customer " + customer.getUsername() +
+                " purchased ticket for event " + event.get().getName() +
                 "(" + updatedTicket.ticketCount() + " tickets remaining)"
         );
-        // Log purchase
-        logger.info("Customer {} purchased ticket for event {} ({} tickets remaining)",
-                customerId,
-                event.get().getName(),
-                updatedTicket.ticketCount());
 
         return event;
     }

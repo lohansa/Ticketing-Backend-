@@ -37,7 +37,6 @@ public class Vendor extends User implements SimulationUser {
         event.setTotalTickets(count);
         event.setVendorId(this.getId());
 
-        System.out.println("Going to add event " + randomName + " with " + count + " tickets at " + futureDate);
         ticketPool.addEvent(event);
         eventsCreated++;
     }
@@ -57,5 +56,8 @@ public class Vendor extends User implements SimulationUser {
                 break;
             }
         }
+
+        SimulationLogger logger = SimulationLogger.getInstance();
+        logger.log("Vendor " + this.getUsername() + " created " + eventsCreated + " events. Now Stopping.");
     }
 }
