@@ -1,24 +1,20 @@
 package com.demo.event_tickets.service;
 
-import com.demo.event_tickets.model.User;
 import com.demo.event_tickets.repository.EventRepository;
 import com.demo.event_tickets.repository.TicketRepository;
 import com.demo.event_tickets.repository.UserRepository;
-import com.demo.event_tickets.simulation.Customer;
-import com.demo.event_tickets.simulation.SimulationUser;
-import com.demo.event_tickets.simulation.TicketPool;
-import com.demo.event_tickets.simulation.Vendor;
+import com.demo.event_tickets.simulation.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class SimulationService {
-    private ExecutorService executorService;
+    private final List<Thread> activeThreads = new ArrayList<>();
+    private final SimulationLogger logger = SimulationLogger.getInstance();
 
     @Autowired
     private UserRepository userRepository;
@@ -27,13 +23,10 @@ public class SimulationService {
     @Autowired
     private TicketRepository ticketRepository;
 
-    public SimulationService() {
-            this.executorService = Executors.newCachedThreadPool();
-    }
-
     public synchronized void startSimulation() {
-        if (executorService == null || executorService.isTerminated()) {
-            executorService = Executors.newCachedThreadPool();
+        if (!activeThreads.isEmpty()) {
+            logger.log("Simulation is already running.");
+            return;
         }
 
         TicketPool.initialize(userRepository, eventRepository, ticketRepository);
@@ -42,22 +35,29 @@ public class SimulationService {
                 .map(SimulationUser::create)
                 .toList();
 
-        users.forEach(executorService::submit);
+        for (SimulationUser user : users) {
+            Thread thread = new Thread(user);
+            activeThreads.add(thread);
+            thread.start();
+        }
+
+        Thread cleaner = new Thread(() -> {
+            while (!activeThreads.isEmpty()) {
+                activeThreads.removeIf(thread -> !thread.isAlive());
+                if (activeThreads.isEmpty()) logger.log("Simulation finished.");
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+        });
+
+        cleaner.start();
     }
 
     public void stopSimulation() {
-        executorService.shutdown();
-
-        try {
-            if (!executorService.awaitTermination(60, TimeUnit.SECONDS)) {
-                executorService.shutdownNow();
-            }
-
-            System.out.println("Simulation stopped");
-        } catch (InterruptedException e) {
-            executorService.shutdownNow();
-            Thread.currentThread().interrupt();
-            System.out.println("Simulation stop interrupted");
-        }
+        activeThreads.forEach(Thread::interrupt);
     }
 }
