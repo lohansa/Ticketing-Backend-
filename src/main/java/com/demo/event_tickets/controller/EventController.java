@@ -1,5 +1,6 @@
 package com.demo.event_tickets.controller;
 
+import com.demo.event_tickets.dto.EventDetailResponse;
 import com.demo.event_tickets.dto.EventListResponse;
 import com.demo.event_tickets.dto.EventCreateRequest;
 import com.demo.event_tickets.dto.EventCreateResponse;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.PathVariable;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -67,4 +69,30 @@ public class EventController {
         return ResponseEntity.ok(events);
     }
 
+    @GetMapping("/api/event/{eventId}")
+    public ResponseEntity<?> getEventDetails(@PathVariable String eventId) {
+        Optional<Event> eventOptional = eventRepository.findById(eventId);
+
+        if (eventOptional.isEmpty()) {
+            return ResponseEntity.status(404)
+                    .body("{\"error\":\"Event not found\"}");
+        }
+
+        Event event = eventOptional.get();
+
+        // Get vendor username
+        Optional<User> vendorOptional = userRepository.findById(event.getVendorId());
+        String vendorName = vendorOptional.map(User::getUsername)
+                .orElse("Unknown Vendor");
+
+        EventDetailResponse response = new EventDetailResponse(
+                event.getId(),
+                event.getName(),
+                event.getDate(),
+                event.getTotalTickets(),
+                vendorName
+        );
+
+        return ResponseEntity.ok(response);
+    }
 }
